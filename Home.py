@@ -1649,6 +1649,88 @@ def create_radar_plot():
 
 ################################################################################################################################
 
+        # 🏆 **Interfaz Principal**
+        st.sidebar.title("⚽ INFORME DE SCOUTING API GEMINI")
+        selected_seasons = st.sidebar.multiselect("Selecciona temporadas:", list(BASE_URLS.keys()), default=["2024"])
+        selected_files = [(season, f"{BASE_URLS[season]}/{file}".replace(" ", "%20"), file.split(".")[0])
+                          for season in selected_seasons for file in FILE_NAMES[season]]
+        
+        # 🔹 Botón para cargar datos
+        if st.sidebar.button("📂 Cargar Datos"):
+            progress_bar = st.sidebar.progress(0)
+            files_to_load = selected_files
+        
+            dataframes = []
+            for i, (season, file_url, competition) in enumerate(files_to_load):
+                df = load_parquet_data(file_url, season, competition)
+                if df is not None:
+                    dataframes.append(df)
+                progress_bar.progress((i + 1) / len(files_to_load))
+        
+            if dataframes:
+                st.session_state["filtered_data"] = pd.concat(dataframes, ignore_index=True)
+                st.success("✅ Datos cargados correctamente")
+            else:
+                st.warning("⚠️ No se pudo cargar ningún archivo.")
+        
+        # 🔹 Verificar si los datos están cargados
+        if "filtered_data" in st.session_state:
+            df = st.session_state["filtered_data"]
+        
+            # 🔹 Interfaz de Búsqueda de Jugadores
+            st.title("🔍 BUSCAR JUGADORES EN TODO EL MUNDO")
+        
+            # 📌 Filtros en la barra lateral
+            st.sidebar.header("Filtros de Búsqueda")
+            seasons_selected = st.sidebar.multiselect("Selecciona temporadas:", sorted(df["Season"].unique()), default=df["Season"].unique())
+            filtered_df = df[df["Season"].isin(seasons_selected)]
+        
+            competitions_selected = st.sidebar.multiselect("Selecciona competiciones:", sorted(filtered_df["Competition"].unique()), default=filtered_df["Competition"].unique())
+            filtered_df = filtered_df[filtered_df["Competition"].isin(competitions_selected)]
+        
+            teams_selected = st.sidebar.multiselect("Selecciona equipos:", sorted(filtered_df["Team within selected timeframe"].dropna().unique()), default=filtered_df["Team within selected timeframe"].unique())
+            filtered_df = filtered_df[filtered_df["Team within selected timeframe"].isin(teams_selected)]
+        
+            age_min, age_max = st.sidebar.slider("Rango de edades:", int(filtered_df["Age"].min()), int(filtered_df["Age"].max()), (int(filtered_df["Age"].min()), int(filtered_df["Age"].max())))
+            filtered_df = filtered_df[(filtered_df["Age"] >= age_min) & (filtered_df["Age"] <= age_max)]
+        
+            # 🔹 Mostrar jugadores filtrados
+            st.dataframe(filtered_df[["Full name", "Team within selected timeframe", "Age", "Primary position"]], use_container_width=True)
+        
+            # 🔹 Generar Informe con Gemini
+            st.title("📄 GENERAR INFORME DE SCOUTING")
+            jugador_seleccionado = st.selectbox("Selecciona un jugador:", filtered_df["Full name"].unique())
+        
+            # 🔹 Función para conectar con Gemini
+            def generar_reporte(jugador, stats):
+                API_KEY = "TU_API_KEY_DE_GEMINI"
+                GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+        
+                payload = {"contents": [{"parts": [{"text": f"Genera un informe de scouting sobre {jugador}. Sus estadísticas son: {stats}."}]}]}
+                headers = {"Content-Type": "application/json"}
+        
+                try:
+                    response = requests.post(GEMINI_URL, headers=headers, json=payload)
+                    if response.status_code == 200:
+                        result = response.json()
+                        return result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "⚠️ No se generó respuesta.")
+                    else:
+                        return f"⚠️ Error {response.status_code}: {response.text}"
+                except requests.exceptions.RequestException as e:
+                    return f"⚠️ Error en la conexión con Gemini: {e}"
+        
+            # 🔹 Botón para generar informe
+            if st.button("🔍 Generar Informe"):
+                jugador_df = filtered_df[filtered_df["Full name"] == jugador_seleccionado].iloc[0]
+                stats_jugador = jugador_df.to_dict()
+                resultado_gemini = generar_reporte(jugador_seleccionado, stats_jugador)
+                st.write(resultado_gemini)
+        
+        else:
+            st.warning("⚠️ Carga los datos primero desde la barra lateral.")
+
+###########################################################################################################################################
+
 tab_functions = {
     "Cargar Datos 🏆": main_page,
     "Buscar 🔎": search_page,
