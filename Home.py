@@ -1649,17 +1649,27 @@ def create_radar_plot():
 
 ################################################################################################################################
 
-        # 🔹 Función para la pestaña de informe de scouting con Gemini
+# 🔹 Función para la pestaña de informe de scouting con Gemini
 def scouting_report_page():
     st.title("📄 Generar Informe de Scouting con Gemini")
 
     if "filtered_data" in st.session_state:
         df = st.session_state["filtered_data"]
-        jugador_seleccionado = st.selectbox("Selecciona un jugador:", df["Full name"].unique())
+
+        # 🔹 Selección de temporada
+        temporadas_disponibles = sorted(df["Season"].unique())
+        temporada_seleccionada = st.selectbox("Selecciona la temporada:", temporadas_disponibles)
+
+        # 🔹 Filtrar jugadores según la temporada seleccionada
+        df_temporada = df[df["Season"] == temporada_seleccionada]
+
+        # 🔹 Selección de jugador dentro de la temporada
+        jugadores_disponibles = df_temporada["Full name"].unique()
+        jugador_seleccionado = st.selectbox("Selecciona un jugador:", jugadores_disponibles)
 
         # 🔹 Función para conectar con Gemini
         def generar_reporte(jugador, stats):
-            API_KEY = "TU_API_KEY_DE_GEMINI"
+            API_KEY = "TU_API_KEY_DE_GEMINI"  # Reemplaza con tu API Key real
             GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
 
             payload = {"contents": [{"parts": [{"text": f"Genera un informe de scouting sobre {jugador}. Sus estadísticas son: {stats}."}]}]}
@@ -1677,13 +1687,14 @@ def scouting_report_page():
 
         # 🔹 Botón para generar informe
         if st.button("🔍 Generar Informe"):
-            jugador_df = df[df["Full name"] == jugador_seleccionado].iloc[0]
+            jugador_df = df_temporada[df_temporada["Full name"] == jugador_seleccionado].iloc[0]
             stats_jugador = jugador_df.to_dict()
             resultado_gemini = generar_reporte(jugador_seleccionado, stats_jugador)
             st.write(resultado_gemini)
 
     else:
         st.warning("⚠️ Carga los datos primero desde la pestaña principal.")
+
 
 ###########################################################################################################################################
 
