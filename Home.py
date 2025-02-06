@@ -1649,6 +1649,19 @@ def create_radar_plot():
 
 ################################################################################################################################
 
+# 🔹 Mapeo de posiciones del dataset a las claves del diccionario `metrics_by_position`
+position_mapping = {
+    'GK': 'Portero',
+    'CB': 'Defensa',
+    'LB': 'Lateral Izquierdo', 'LWB': 'Lateral Izquierdo',
+    'RB': 'Lateral Derecho', 'RWB': 'Lateral Derecho',
+    'DMF': 'Mediocampista Defensivo',
+    'CMF': 'Mediocampista Central',
+    'AMF': 'Mediocampista Ofensivo',
+    'RW': 'Extremos', 'LW': 'Extremos', 'LWF': 'Extremos', 'RWF': 'Extremos',
+    'CF': 'Delantero'
+}
+
 # 🔹 Función para la pestaña de informe de scouting con Gemini
 def scouting_report_page():
     st.title("📄 Generar Informe de Scouting con Gemini")
@@ -1667,18 +1680,20 @@ def scouting_report_page():
         jugadores_disponibles = df_temporada["Full name"].unique()
         jugador_seleccionado = st.selectbox("Selecciona un jugador:", jugadores_disponibles)
 
-        # 🔹 Obtener la posición del jugador seleccionado
+        # 🔹 Obtener la posición del jugador seleccionado y mapearla al diccionario
         jugador_info = df_temporada[df_temporada["Full name"] == jugador_seleccionado].iloc[0]
-        posicion_jugador = jugador_info["Primary position"]
+        posicion_original = jugador_info["Primary position"]
 
-        # 🔹 Seleccionar métricas relevantes para la posición del jugador
+        # Convertir la posición a la nomenclatura del diccionario `metrics_by_position`
+        posicion_jugador = next((position_mapping[key] for key in position_mapping if key in posicion_original), "Desconocida")
+
         if posicion_jugador in metrics_by_position:
             metricas_relevantes = [metrica[0] for metrica in metrics_by_position[posicion_jugador]]
         else:
-            metricas_relevantes = ["Matches played", "Minutes played"]  # Métricas generales si no se encuentra la posición
+            metricas_relevantes = ["Matches played", "Minutes played"]  # Métricas generales si la posición no está definida
 
         # 🔹 Filtrar las estadísticas del jugador con las métricas relevantes
-        stats_jugador = jugador_info[metricas_relevantes].to_dict()
+        stats_jugador = {m: jugador_info[m] for m in metricas_relevantes if m in jugador_info}
 
         # 🔹 Función para conectar con Gemini
         def generar_reporte(jugador, posicion, stats):
@@ -1711,6 +1726,7 @@ def scouting_report_page():
 
     else:
         st.warning("⚠️ Carga los datos primero desde la pestaña principal.")
+
 
 
 
