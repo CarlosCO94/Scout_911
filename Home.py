@@ -1667,12 +1667,31 @@ def scouting_report_page():
         jugadores_disponibles = df_temporada["Full name"].unique()
         jugador_seleccionado = st.selectbox("Selecciona un jugador:", jugadores_disponibles)
 
+        # 🔹 Obtener la posición del jugador seleccionado
+        jugador_info = df_temporada[df_temporada["Full name"] == jugador_seleccionado].iloc[0]
+        posicion_jugador = jugador_info["Primary position"]
+
+        # 🔹 Seleccionar métricas relevantes para la posición del jugador
+        if posicion_jugador in metrics_by_position:
+            metricas_relevantes = [metrica[0] for metrica in metrics_by_position[posicion_jugador]]
+        else:
+            metricas_relevantes = ["Matches played", "Minutes played"]  # Métricas generales si no se encuentra la posición
+
+        # 🔹 Filtrar las estadísticas del jugador con las métricas relevantes
+        stats_jugador = jugador_info[metricas_relevantes].to_dict()
+
         # 🔹 Función para conectar con Gemini
-        def generar_reporte(jugador, stats):
+        def generar_reporte(jugador, posicion, stats):
             API_KEY = "AIzaSyCJKxie4DQqQCDnN_zhSmK_sbH4N7YeVeY"  # Reemplaza con tu API Key real
             GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
 
-            payload = {"contents": [{"parts": [{"text": f"Genera un informe de scouting sobre {jugador}. Sus estadísticas son: {stats}."}]}]}
+            prompt = (
+                f"Genera un informe de scouting para {jugador}, quien juega como {posicion}. "
+                f"Aquí están sus estadísticas clave en su posición: {stats}. "
+                "Analiza su desempeño y compara con estándares de la posición."
+            )
+
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
             headers = {"Content-Type": "application/json"}
 
             try:
@@ -1687,13 +1706,12 @@ def scouting_report_page():
 
         # 🔹 Botón para generar informe
         if st.button("🔍 Generar Informe"):
-            jugador_df = df_temporada[df_temporada["Full name"] == jugador_seleccionado].iloc[0]
-            stats_jugador = jugador_df.to_dict()
-            resultado_gemini = generar_reporte(jugador_seleccionado, stats_jugador)
+            resultado_gemini = generar_reporte(jugador_seleccionado, posicion_jugador, stats_jugador)
             st.write(resultado_gemini)
 
     else:
         st.warning("⚠️ Carga los datos primero desde la pestaña principal.")
+
 
 
 ###########################################################################################################################################
