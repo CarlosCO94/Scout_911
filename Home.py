@@ -1705,7 +1705,7 @@ def scouting_report_page():
 
         # 🔹 Función para conectar con Gemini
         def generar_reporte(jugador, pais, posicion, partidos, minutos, mejores, peores):
-            API_KEY = "TU_API_KEY_DE_GEMINI"
+            API_KEY = "AIzaSyCJKxie4DQqQCDnN_zhSmK_sbH4N7YeVeY"
             GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
 
             prompt = (
