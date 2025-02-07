@@ -1649,9 +1649,16 @@ def create_radar_plot():
 
 ################################################################################################################################
 
-# 🔹 Función mejorada para la pestaña de informe de scouting con Gemini
+import streamlit as st
+import pandas as pd
+import requests
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import percentileofscore
+
+# 🔹 Función para la pestaña de informe de scouting con Gemini y comparación con jugadores de la misma liga
 def scouting_report_page():
-    st.title("📄 Generar Informe de Scout911")
+    st.title("📄 Generar Informe de Scouting con Gemini")
 
     if "filtered_data" in st.session_state:
         df = st.session_state["filtered_data"]
@@ -1673,6 +1680,13 @@ def scouting_report_page():
         posicion_original = jugador_info["Primary position"]
         partidos_jugados = jugador_info["Matches played"]
         minutos_jugados = jugador_info["Minutes played"]
+        liga_jugador = jugador_info["Competition"]
+
+        # 🔹 Filtrar jugadores de la misma liga y posición
+        df_misma_posicion = df_temporada[
+            (df_temporada["Competition"] == liga_jugador) & 
+            (df_temporada["Primary position"] == posicion_original)
+        ]
 
         # 🔹 Mapeo de posiciones para el diccionario `metrics_by_position`
         position_mapping = {
@@ -1698,22 +1712,31 @@ def scouting_report_page():
         # 🔹 Extraer estadísticas del jugador con métricas relevantes
         stats_jugador = {m: jugador_info[m] for m in metricas_relevantes if m in jugador_info}
 
+        # 🔹 Calcular percentiles dentro de la liga
+        percentiles = {}
+        for metrica in metricas_relevantes:
+            if metrica in df_misma_posicion.columns:
+                valores = df_misma_posicion[metrica].dropna()
+                if len(valores) > 0:
+                    percentiles[metrica] = percentileofscore(valores, jugador_info[metrica])
+
         # 🔹 Separar métricas en "fuertes" y "débiles"
-        sorted_stats = sorted(stats_jugador.items(), key=lambda x: x[1], reverse=True)
+        sorted_stats = sorted(stats_jugador.items(), key=lambda x: percentiles.get(x[0], 50), reverse=True)
         mejores_metricas = dict(sorted_stats[:5])  # Top 5 métricas más fuertes
         metricas_a_mejorar = dict(sorted_stats[-5:])  # Bottom 5 métricas más débiles
 
         # 🔹 Función para conectar con Gemini
-        def generar_reporte(jugador, pais, posicion, partidos, minutos, mejores, peores):
+        def generar_reporte(jugador, pais, posicion, partidos, minutos, mejores, peores, percentiles):
             API_KEY = "AIzaSyCJKxie4DQqQCDnN_zhSmK_sbH4N7YeVeY"
             GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
 
             prompt = (
                 f"Genera un informe de scouting para {jugador}, un jugador de {pais} que juega como {posicion}. "
-                f"En el periodo analizado, jugó {partidos} partidos y acumuló {minutos} minutos. "
-                f"A continuación, se presentan sus métricas más destacadas: {mejores}. "
-                f"También se identificaron áreas de mejora en las siguientes métricas: {peores}. "
-                "Analiza su desempeño general, su impacto en el equipo y su comparación con estándares de su posición."
+                f"En la última temporada, jugó {partidos} partidos y acumuló {minutos} minutos. "
+                f"Sus métricas más destacadas son: {mejores}. "
+                f"Áreas a mejorar incluyen: {peores}. "
+                f"Comparado con jugadores de la misma liga y posición, su percentil en cada métrica clave es: {percentiles}. "
+                "Analiza su desempeño general y haz recomendaciones para su evolución como jugador."
             )
 
             payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -1732,12 +1755,26 @@ def scouting_report_page():
         # 🔹 Botón para generar informe
         if st.button("🔍 Generar Informe"):
             resultado_gemini = generar_reporte(
-                jugador_seleccionado, pais, posicion_jugador, partidos_jugados, minutos_jugados, mejores_metricas, metricas_a_mejorar
+                jugador_seleccionado, pais, posicion_jugador, partidos_jugados, minutos_jugados, mejores_metricas, metricas_a_mejorar, percentiles
             )
             st.write(resultado_gemini)
 
+        # 🔹 Visualización de comparación con la liga
+        st.subheader("📊 Comparación con jugadores de la misma liga y posición")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        metricas_seleccionadas = list(mejores_metricas.keys()) + list(metricas_a_mejorar.keys())
+
+        percentiles_valores = [percentiles.get(m, 50) for m in metricas_seleccionadas]
+
+        ax.barh(metricas_seleccionadas, percentiles_valores, color=['green' if p > 50 else 'red' for p in percentiles_valores])
+        ax.set_xlabel("Percentil en la Liga (0-100)")
+        ax.set_title(f"Percentiles de {jugador_seleccionado} en su Liga")
+        ax.axvline(x=50, color="gray", linestyle="--")  # Línea de referencia en el 50%
+        st.pyplot(fig)
+
     else:
         st.warning("⚠️ Carga los datos primero desde la pestaña principal.")
+
 
 ###########################################################################################################################################
 
