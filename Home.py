@@ -219,7 +219,7 @@ BASE_URLS = {
     "2023": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/2023",
     "23-24": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/23-24",
     "2024": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/2024",
-    "24-25": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/24-25"
+    "24-25": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/24-25",
     "2025": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/2025"
 }
 
