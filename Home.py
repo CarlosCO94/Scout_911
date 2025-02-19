@@ -220,9 +220,13 @@ BASE_URLS = {
     "23-24": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/23-24",
     "2024": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/2024",
     "24-25": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/24-25"
+    "2025": "https://raw.githubusercontent.com/CarlosCO94/Scout_911/main/data/2025"
 }
 
 FILE_NAMES = {
+    "2025": [
+        "Argentina Liga Profesional de Futbol 2025.parquet",
+    ],
     "2024": [
         "Argentina Copa de la Liga 2024.parquet",
         "Argentina Primera Nacional 2024.parquet",
@@ -529,7 +533,7 @@ FILE_NAMES = {
 
 # Columnas necesarias para la aplicación
 COLUMNS_TO_LOAD = [
-    "Full name",
+    "Player",
     "Team within selected timeframe",
     "Passport country",
     "Foot",
@@ -724,7 +728,7 @@ def search_page():
         # Mostrar resultados
         if not filtered_data.empty:
             columns_to_display = [
-                "Full name", "Team within selected timeframe", "Age", "Foot",
+                "Player", "Team within selected timeframe", "Age", "Foot",
                 "Passport country", "Minutes played", "Season", "Competition"
             ]
             # Asegúrate de ajustar el número de filas que quieres mostrar. Puedes también controlar el tamaño de la tabla.
@@ -749,7 +753,7 @@ def comparison_page():
 
     # Crear una columna única `Player Instance` para diferenciar por temporada y equipo
     data["Player Instance"] = (
-        data["Full name"] + " | " +
+        data["Player"] + " | " +
         data["Team within selected timeframe"].fillna("Sin equipo") + " | " +
         data["Season"].astype(str)
     )
@@ -835,7 +839,7 @@ def similarity_page():
         # Filtro de jugador de referencia
         player_to_compare = st.sidebar.selectbox(
             "Jugador de referencia:",
-            options=sorted(data["Full name"].dropna().unique().tolist())
+            options=sorted(data["Player"].dropna().unique().tolist())
         )
 
         # Filtro de posición
@@ -919,7 +923,7 @@ def similarity_page():
             filtered_data = filtered_data[filtered_data["Foot"].isin(dominant_foot)]
 
         # Obtener los datos del jugador seleccionado
-        player_data = data[data["Full name"] == player_to_compare]
+        player_data = data[data["Player"] == player_to_compare]
 
         if player_data.empty:
             st.warning("No se encontraron datos para el jugador seleccionado.")
@@ -1036,7 +1040,7 @@ def density_page():
             filtered_data = filtered_data[filtered_data["Team within selected timeframe"] == selected_team]
 
         # Filtro de jugadores basado en el equipo seleccionado
-        available_players = sorted(filtered_data["Full name"].dropna().unique().tolist())
+        available_players = sorted(filtered_data["Player"].dropna().unique().tolist())
         if not available_players:
             st.warning("No hay jugadores disponibles para la selección actual.")
             return
@@ -1090,8 +1094,8 @@ def generar_grafico_densidad(df, metric_english, metric_spanish, jugador_objetiv
     sns.kdeplot(data=df, x=metric_english, ax=ax, color="gray", fill=True, alpha=0.3, label="Todos los Jugadores")
 
     # Líneas para jugadores
-    valor_objetivo = df.loc[df["Full name"] == jugador_objetivo, metric_english].values
-    valor_comparacion = df.loc[df["Full name"] == jugador_comparacion, metric_english].values
+    valor_objetivo = df.loc[df["Player"] == jugador_objetivo, metric_english].values
+    valor_comparacion = df.loc[df["Player"] == jugador_comparacion, metric_english].values
 
     if len(valor_objetivo) > 0:
         ax.axvline(valor_objetivo[0], color=color_jugador_objetivo, linestyle="--", linewidth=2, label=jugador_objetivo)
@@ -1212,8 +1216,8 @@ def create_scatter_plot():
         y=y_metric,
         size=normalized_size,
         color=color_metric,
-        text='Full name',
-        hover_data=['Full name', 'Team within selected timeframe'],
+        text='Player',
+        hover_data=['Player', 'Team within selected timeframe'],
         title=f'{x_metric} vs {y_metric}',
         height=800,
         color_continuous_scale='Viridis'  # Puedes cambiar la paleta de colores
@@ -1304,8 +1308,8 @@ def radar_page():
         total_players = len(filtered_data)
 
         if not filtered_data.empty:
-            selected_player = st.selectbox("Selecciona un jugador", options=filtered_data["Full name"].unique())
-            jugador_data = filtered_data[filtered_data['Full name'] == selected_player]
+            selected_player = st.selectbox("Selecciona un jugador", options=filtered_data["Player"].unique())
+            jugador_data = filtered_data[filtered_data['Player'] == selected_player]
 
             if not jugador_data.empty:
                 # Obtener todas las métricas disponibles para la posición
@@ -1507,7 +1511,7 @@ def create_beeswarm_plot():
         filtered_data = data
 
     # Pide al usuario que seleccione el jugador a destacar
-    player_options = filtered_data['Full name'].unique()
+    player_options = filtered_data['Player'].unique()
     selected_player = st.selectbox("Selecciona el jugador a destacar", player_options, key="player_selectbox")
 
     # Selecciona la métrica a visualizar
@@ -1528,8 +1532,8 @@ def create_beeswarm_plot():
 
     sns.swarmplot(x=selected_metric, data=filtered_data, zorder=1, ax=ax)
 
-    if not filtered_data.empty and selected_player in filtered_data['Full name'].values:
-        valor = filtered_data[filtered_data['Full name'] == selected_player][selected_metric].values[0]
+    if not filtered_data.empty and selected_player in filtered_data['Player'].values:
+        valor = filtered_data[filtered_data['Player'] == selected_player][selected_metric].values[0]
     else:
         valor = 0
 
@@ -1613,7 +1617,7 @@ def create_radar_plot():
         filtered_df = filtered_df[filtered_df['Minutes played'] >= selected_minutes]
 
     with st.sidebar:
-        players = list(filtered_df['Full name'].unique())
+        players = list(filtered_df['Player'].unique())
         selected_players = st.multiselect('Jugadores (máx. 5):', players, max_selections=5, key='radar_plot_players')
 
     if selected_players:
@@ -1621,7 +1625,7 @@ def create_radar_plot():
         selected_metrics = st.multiselect('Métricas a comparar:', numeric_cols, default=numeric_cols[:5] if len(numeric_cols) >= 5 else numeric_cols, key='radar_plot_metrics')
 
         if selected_metrics:
-            df_radar = filtered_df[filtered_df['Full name'].isin(selected_players)].copy()
+            df_radar = filtered_df[filtered_df['Player'].isin(selected_players)].copy()
             
             fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
             angles = [n / float(len(selected_metrics)) * 2 * pi for n in range(len(selected_metrics))]
@@ -1636,7 +1640,7 @@ def create_radar_plot():
             colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231']
             legend_handles = []
             for idx, player in enumerate(selected_players):
-                values = df_radar[df_radar['Full name'] == player][selected_metrics].values.flatten().tolist()
+                values = df_radar[df_radar['Player'] == player][selected_metrics].values.flatten().tolist()
                 values += values[:1]
                 line, = ax.plot(angles, values, linewidth=2, linestyle='solid', color=colors[idx])
                 ax.fill(angles, values, colors[idx], alpha=0.2)
@@ -1671,11 +1675,11 @@ def scouting_report_page():
         df_temporada = df[df["Season"] == temporada_seleccionada]
 
         # 🔹 Selección de jugador dentro de la temporada
-        jugadores_disponibles = df_temporada["Full name"].unique()
+        jugadores_disponibles = df_temporada["Player"].unique()
         jugador_seleccionado = st.selectbox("Selecciona un jugador:", jugadores_disponibles)
 
         # 🔹 Obtener información del jugador seleccionado
-        jugador_info = df_temporada[df_temporada["Full name"] == jugador_seleccionado].iloc[0]
+        jugador_info = df_temporada[df_temporada["Player"] == jugador_seleccionado].iloc[0]
         pais = jugador_info["Passport country"]
         posicion_original = jugador_info["Primary position"]
         partidos_jugados = jugador_info["Matches played"]
@@ -1793,3 +1797,4 @@ tab_functions = {
 
 tab_selection = st.sidebar.radio("", list(tab_functions.keys()))
 tab_functions[tab_selection]()
+
